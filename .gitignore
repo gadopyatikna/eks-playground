@@ -1,0 +1,9 @@
+# .NET build output
+**/bin/
+**/obj/
+
+# Local tooling and secrets
+.vs/
+.idea/
+*.user
+terraform.tfvars
