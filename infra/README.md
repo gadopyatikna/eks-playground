@@ -40,7 +40,7 @@ The target group is intentionally empty until an EKS workload is registered thro
 
 ## Deploy ClientWebApi to EKS
 
-The first `terraform apply` creates the EKS platform and an immutable ECR repository, but does not start the application. Push the image, set its full immutable ECR URI as `client_webapp_image` in `terraform.tfvars`, and apply again. Terraform then creates the `apps` namespace, a two-replica Deployment, and a ClusterIP Service on port `8080`. The Deployment uses `/ready` and `/health` for readiness and liveness checks. Run the following commands from the repository root.
+The `infra/` root creates the EKS platform and an immutable ECR repository, but never starts the application. The separate [`workloads/client-webapp/`](../workloads/client-webapp/README.md) root creates the namespace, Deployment, and Service after the image is available. Run the following commands from the repository root.
 
 ```bash
 ECR_REPOSITORY=$(terraform -chdir=infra output -raw client_webapp_ecr_repository_url)
@@ -50,10 +50,11 @@ docker tag client-web-api:git-sha "$ECR_REPOSITORY:git-sha"
 docker push "$ECR_REPOSITORY:git-sha"
 ```
 
-Then set:
+Then copy `workloads/client-webapp/terraform.tfvars.example` to `workloads/client-webapp/terraform.tfvars`, set the immutable image URI, and deploy the workload:
 
-```hcl
-client_webapp_image = "ACCOUNT.dkr.ecr.us-east-1.amazonaws.com/client-webapp-dev-client-webapp:git-sha"
+```bash
+terraform -chdir=workloads/client-webapp init
+terraform -chdir=workloads/client-webapp apply
 ```
 
 ## AWS Reserved IPv4 Addresses

@@ -12,11 +12,6 @@ single_nat_gateway = true
 client_webapp_port = 8080
 db_port            = 5432
 
-# First apply creates this ECR repository. Push an immutable image tag, then set
-# this value and apply again to create the Deployment and Service in EKS.
-# client_webapp_image = "123456789012.dkr.ecr.us-east-1.amazonaws.com/client-webapp-dev-client-webapp:git-sha"
-client_webapp_replicas = 2
-
 # ACM certificate in the same region as the ALB. HTTPS terminates at the ALB.
 # acm_certificate_arn = "arn:aws:acm:us-east-1:123456789012:certificate/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 

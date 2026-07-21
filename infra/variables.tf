@@ -51,19 +51,6 @@ variable "client_webapp_port" {
   default     = 8080
 }
 
-variable "client_webapp_image" {
-  description = "Immutable ECR image URI for ClientWebApi. Leave null to create the EKS platform and ECR repository without deploying the workload."
-  type        = string
-  default     = null
-  nullable    = true
-}
-
-variable "client_webapp_replicas" {
-  description = "Number of ClientWebApi Pods to run in EKS once an image is configured."
-  type        = number
-  default     = 2
-}
-
 variable "db_port" {
   description = "Private database port. Defaults to PostgreSQL."
   type        = number

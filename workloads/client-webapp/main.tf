@@ -1,34 +1,13 @@
-resource "aws_ecr_repository" "client_webapp" {
-  name                 = "${var.name}-${var.environment}-client-webapp"
-  image_tag_mutability = "IMMUTABLE"
-
-  image_scanning_configuration {
-    scan_on_push = true
-  }
-
-  encryption_configuration {
-    encryption_type = "AES256"
-  }
-
-  tags = merge(local.common_tags, {
-    Name = "${var.name}-${var.environment}-client-webapp"
-  })
-}
-
 resource "kubernetes_namespace_v1" "apps" {
-  count = var.client_webapp_image == null ? 0 : 1
-
   metadata {
     name = "apps"
   }
 }
 
 resource "kubernetes_deployment_v1" "client_webapp" {
-  count = var.client_webapp_image == null ? 0 : 1
-
   metadata {
     name      = "client-webapp"
-    namespace = kubernetes_namespace_v1.apps[0].metadata[0].name
+    namespace = kubernetes_namespace_v1.apps.metadata[0].name
     labels = {
       "app.kubernetes.io/name" = "client-webapp"
     }
@@ -98,11 +77,9 @@ resource "kubernetes_deployment_v1" "client_webapp" {
 }
 
 resource "kubernetes_service_v1" "client_webapp" {
-  count = var.client_webapp_image == null ? 0 : 1
-
   metadata {
     name      = "client-webapp"
-    namespace = kubernetes_namespace_v1.apps[0].metadata[0].name
+    namespace = kubernetes_namespace_v1.apps.metadata[0].name
   }
 
   spec {
