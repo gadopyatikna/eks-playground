@@ -31,10 +31,10 @@ output "db_subnet_group_name" {
 output "security_group_ids" {
   description = "Security groups for each workload tier."
   value = {
-    client_web_alb  = aws_security_group.client_web_alb.id
-    client_webapp   = aws_security_group.client_webapp.id
-    lambda          = aws_security_group.lambda.id
-    database        = aws_security_group.database.id
+    client_web_alb = aws_security_group.client_web_alb.id
+    client_webapp  = aws_security_group.client_webapp.id
+    lambda         = aws_security_group.lambda.id
+    database       = aws_security_group.database.id
   }
 }
 

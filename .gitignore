@@ -7,3 +7,6 @@
 .idea/
 *.user
 terraform.tfvars
+.terraform/
+*.tfstate
+*.tfstate.*
