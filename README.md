@@ -1,11 +1,60 @@
-# AWS VPC Starter
+# AWS VPC + EKS Starter
 
 This is a Terraform starter for a typical client-facing AWS web application with:
 
 - Public entrypoint for a client-facing webapp
-- Internal-only webapp entrypoint
 - Internet-facing Lambda entrypoint pattern
 - Private database tier
+- Minimal Amazon EKS cluster with a managed node group
+
+## EKS
+
+The default configuration creates a two-node EKS managed node group in the private app subnets, along with the required IAM roles and the `vpc-cni`, `coredns`, and `kube-proxy` add-ons. The Kubernetes API has both private access and public access enabled by default, which makes initial administration simple; set `eks_endpoint_public_access = false` after ensuring you have private access (VPN, bastion, or a connected VPC).
+
+EKS worker nodes in private subnets require outbound access to pull container images and reach AWS APIs. Enable a NAT Gateway before applying:
+
+```hcl
+enable_nat_gateway = true
+single_nat_gateway = true
+```
+
+The connection is network routing rather than a direct EKS-to-NAT resource link:
+
+```text
+EKS managed node -> private app subnet -> private app route table
+  -> 0.0.0.0/0 via NAT Gateway -> Internet Gateway -> AWS APIs / container registries
+```
+
+After `terraform apply`, configure kubectl:
+
+```bash
+aws eks update-kubeconfig --region us-east-1 --name client-webapp-dev-eks
+kubectl get nodes
+```
+
+## Public ALB and TLS
+
+The public ALB terminates TLS with the ACM certificate supplied in `acm_certificate_arn`. Its HTTP listener permanently redirects requests to HTTPS, and the HTTPS listener forwards HTTP traffic to the `client-webapp` target group on port `8080`.
+
+The target group is intentionally empty until an EKS workload is registered through an AWS Load Balancer Controller Ingress or TargetGroupBinding.
+
+## Deploy ClientWebApi to EKS
+
+The first `terraform apply` creates the EKS platform and an immutable ECR repository, but does not start the application. Push the image, set its full immutable ECR URI as `client_webapp_image` in `terraform.tfvars`, and apply again. Terraform then creates the `apps` namespace, a two-replica Deployment, and a ClusterIP Service on port `8080`. The Deployment uses `/ready` and `/health` for readiness and liveness checks.
+
+```bash
+ECR_REPOSITORY=$(terraform output -raw client_webapp_ecr_repository_url)
+aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin "${ECR_REPOSITORY%/*}"
+docker build --tag client-web-api:git-sha .
+docker tag client-web-api:git-sha "$ECR_REPOSITORY:git-sha"
+docker push "$ECR_REPOSITORY:git-sha"
+```
+
+Then set:
+
+```hcl
+client_webapp_image = "ACCOUNT.dkr.ecr.us-east-1.amazonaws.com/client-webapp-dev-client-webapp:git-sha"
+```
 
 ## Web API
 
@@ -94,10 +143,9 @@ Public ALB / API Gateway
   |
   v
 Private app subnets
-  |        |         |
-  |        |         +-- Lambda ENIs, if Lambda needs VPC access
-  |        +------------ Internal webapp
-  +--------------------- Client-facing webapp targets
+  |        |
+  |        +-- Lambda ENIs, if Lambda needs VPC access
+  +----------- Client-facing webapp targets
   |
   v
 Private data subnets
@@ -109,7 +157,6 @@ RDS / private database
 Recommended entrypoint mapping:
 
 - Client-facing webapp: internet-facing ALB in public subnets, app compute in private app subnets.
-- Internal webapp: internal ALB in private app subnets, reachable from VPN, Direct Connect, peered VPCs, or allowed private CIDRs.
 - Internet-facing Lambda: API Gateway or Lambda Function URL as the public entrypoint. Put the Lambda in private app subnets only if it must reach the private DB or other VPC resources.
 - Private DB: RDS/Aurora in private data subnets with no public access.
 
@@ -149,4 +196,4 @@ terraform plan
 terraform apply
 ```
 
-Copy `terraform.tfvars.example` to `terraform.tfvars` and adjust the region, environment name, allowed internal CIDRs, and DB port.
+Copy `terraform.tfvars.example` to `terraform.tfvars` and adjust the region, environment name, and DB port.

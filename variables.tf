@@ -45,22 +45,23 @@ variable "single_nat_gateway" {
   default     = true
 }
 
-variable "allowed_internal_cidrs" {
-  description = "CIDRs allowed to reach internal webapp entrypoints, such as VPN, office, or trusted VPC CIDRs."
-  type        = list(string)
-  default     = ["10.20.0.0/16"]
-}
-
 variable "client_webapp_port" {
   description = "Port exposed by the client-facing webapp targets."
   type        = number
   default     = 8080
 }
 
-variable "internal_webapp_port" {
-  description = "Port exposed by the internal webapp targets."
+variable "client_webapp_image" {
+  description = "Immutable ECR image URI for ClientWebApi. Leave null to create the EKS platform and ECR repository without deploying the workload."
+  type        = string
+  default     = null
+  nullable    = true
+}
+
+variable "client_webapp_replicas" {
+  description = "Number of ClientWebApi Pods to run in EKS once an image is configured."
   type        = number
-  default     = 8080
+  default     = 2
 }
 
 variable "db_port" {
@@ -69,8 +70,55 @@ variable "db_port" {
   default     = 5432
 }
 
+variable "acm_certificate_arn" {
+  description = "ACM certificate ARN for the public ALB HTTPS listener. The certificate must be in the deployment region."
+  type        = string
+}
+
 variable "tags" {
   description = "Extra tags to apply to all resources."
   type        = map(string)
   default     = {}
+}
+
+variable "eks_kubernetes_version" {
+  description = "Kubernetes version for the EKS control plane."
+  type        = string
+  default     = "1.36"
+}
+
+variable "eks_endpoint_public_access" {
+  description = "Whether the EKS API endpoint is reachable from the internet. Restrict it before production use."
+  type        = bool
+  default     = true
+}
+
+variable "eks_node_instance_type" {
+  description = "Instance type used by the default managed EKS node group."
+  type        = string
+  default     = "t3.medium"
+}
+
+variable "eks_node_disk_size" {
+  description = "Root EBS volume size, in GiB, for each managed node."
+  type        = number
+  default     = 20
+}
+
+variable "eks_node_desired_size" {
+  description = "Desired number of nodes in the default managed node group."
+  type        = number
+  default     = 2
+}
+
+variable "eks_node_min_size" {
+  description = "Minimum number of nodes in the default managed node group."
+  type        = number
+  default     = 1
+}
+
+variable "eks_node_max_size" {
+  description = "Maximum number of nodes in the default managed node group."
+  type        = number
+  default     = 2
 }

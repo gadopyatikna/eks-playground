@@ -11,6 +11,8 @@ locals {
 
   nat_gateway_count = var.enable_nat_gateway ? (var.single_nat_gateway ? 1 : var.availability_zone_count) : 0
 
+  eks_cluster_name = "${var.name}-${var.environment}-eks"
+
   common_tags = merge(
     {
       Project     = var.name
@@ -48,8 +50,10 @@ resource "aws_subnet" "public" {
   map_public_ip_on_launch = true
 
   tags = merge(local.common_tags, {
-    Name = "${var.name}-${var.environment}-public-${local.azs[count.index]}"
-    Tier = "public"
+    Name                              = "${var.name}-${var.environment}-public-${local.azs[count.index]}"
+    Tier                              = "public"
+    "kubernetes.io/cluster/${local.eks_cluster_name}" = "shared"
+    "kubernetes.io/role/elb"                         = "1"
   })
 }
 
@@ -62,8 +66,10 @@ resource "aws_subnet" "private_app" {
   map_public_ip_on_launch = false
 
   tags = merge(local.common_tags, {
-    Name = "${var.name}-${var.environment}-private-app-${local.azs[count.index]}"
-    Tier = "private-app"
+    Name                                      = "${var.name}-${var.environment}-private-app-${local.azs[count.index]}"
+    Tier                                      = "private-app"
+    "kubernetes.io/cluster/${local.eks_cluster_name}" = "shared"
+    "kubernetes.io/role/internal-elb"                 = "1"
   })
 }
 
@@ -196,26 +202,6 @@ resource "aws_security_group" "client_webapp" {
   })
 }
 
-resource "aws_security_group" "internal_web_alb" {
-  name        = "${var.name}-${var.environment}-internal-web-alb"
-  description = "Internal ALB for private webapp."
-  vpc_id      = aws_vpc.this.id
-
-  tags = merge(local.common_tags, {
-    Name = "${var.name}-${var.environment}-internal-web-alb"
-  })
-}
-
-resource "aws_security_group" "internal_webapp" {
-  name        = "${var.name}-${var.environment}-internal-webapp"
-  description = "Private targets for the internal webapp."
-  vpc_id      = aws_vpc.this.id
-
-  tags = merge(local.common_tags, {
-    Name = "${var.name}-${var.environment}-internal-webapp"
-  })
-}
-
 resource "aws_security_group" "lambda" {
   name        = "${var.name}-${var.environment}-lambda"
   description = "Lambda functions that need VPC access."
@@ -290,53 +276,6 @@ resource "aws_vpc_security_group_egress_rule" "client_webapp_https" {
   ip_protocol       = "tcp"
 }
 
-resource "aws_vpc_security_group_ingress_rule" "internal_web_alb_https" {
-  for_each = toset(var.allowed_internal_cidrs)
-
-  security_group_id = aws_security_group.internal_web_alb.id
-  description       = "HTTPS from trusted internal networks."
-  cidr_ipv4         = each.value
-  from_port         = 443
-  to_port           = 443
-  ip_protocol       = "tcp"
-}
-
-resource "aws_vpc_security_group_egress_rule" "internal_web_alb_to_app" {
-  security_group_id            = aws_security_group.internal_web_alb.id
-  description                  = "Forward traffic to internal webapp targets."
-  referenced_security_group_id = aws_security_group.internal_webapp.id
-  from_port                    = var.internal_webapp_port
-  to_port                      = var.internal_webapp_port
-  ip_protocol                  = "tcp"
-}
-
-resource "aws_vpc_security_group_ingress_rule" "internal_webapp_from_alb" {
-  security_group_id            = aws_security_group.internal_webapp.id
-  description                  = "App traffic from internal ALB."
-  referenced_security_group_id = aws_security_group.internal_web_alb.id
-  from_port                    = var.internal_webapp_port
-  to_port                      = var.internal_webapp_port
-  ip_protocol                  = "tcp"
-}
-
-resource "aws_vpc_security_group_egress_rule" "internal_webapp_to_db" {
-  security_group_id            = aws_security_group.internal_webapp.id
-  description                  = "Database access."
-  referenced_security_group_id = aws_security_group.database.id
-  from_port                    = var.db_port
-  to_port                      = var.db_port
-  ip_protocol                  = "tcp"
-}
-
-resource "aws_vpc_security_group_egress_rule" "internal_webapp_https" {
-  security_group_id = aws_security_group.internal_webapp.id
-  description       = "HTTPS outbound for APIs and package mirrors."
-  cidr_ipv4         = "0.0.0.0/0"
-  from_port         = 443
-  to_port           = 443
-  ip_protocol       = "tcp"
-}
-
 resource "aws_vpc_security_group_egress_rule" "lambda_to_db" {
   security_group_id            = aws_security_group.lambda.id
   description                  = "Database access."
@@ -359,15 +298,6 @@ resource "aws_vpc_security_group_ingress_rule" "database_from_client_webapp" {
   security_group_id            = aws_security_group.database.id
   description                  = "Client-facing webapp DB access."
   referenced_security_group_id = aws_security_group.client_webapp.id
-  from_port                    = var.db_port
-  to_port                      = var.db_port
-  ip_protocol                  = "tcp"
-}
-
-resource "aws_vpc_security_group_ingress_rule" "database_from_internal_webapp" {
-  security_group_id            = aws_security_group.database.id
-  description                  = "Internal webapp DB access."
-  referenced_security_group_id = aws_security_group.internal_webapp.id
   from_port                    = var.db_port
   to_port                      = var.db_port
   ip_protocol                  = "tcp"

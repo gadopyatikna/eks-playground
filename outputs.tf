@@ -33,10 +33,33 @@ output "security_group_ids" {
   value = {
     client_web_alb  = aws_security_group.client_web_alb.id
     client_webapp   = aws_security_group.client_webapp.id
-    internal_alb    = aws_security_group.internal_web_alb.id
-    internal_webapp = aws_security_group.internal_webapp.id
     lambda          = aws_security_group.lambda.id
     database        = aws_security_group.database.id
   }
 }
 
+output "eks_cluster_name" {
+  description = "EKS cluster name."
+  value       = aws_eks_cluster.this.name
+}
+
+output "eks_cluster_endpoint" {
+  description = "EKS Kubernetes API endpoint."
+  value       = aws_eks_cluster.this.endpoint
+}
+
+output "eks_cluster_certificate_authority_data" {
+  description = "Base64-encoded EKS cluster certificate authority data."
+  value       = aws_eks_cluster.this.certificate_authority[0].data
+  sensitive   = true
+}
+
+output "client_webapp_url" {
+  description = "Public HTTPS URL of the client webapp ALB."
+  value       = "https://${aws_lb.client_webapp.dns_name}"
+}
+
+output "client_webapp_ecr_repository_url" {
+  description = "ECR repository to which the ClientWebApi image must be pushed."
+  value       = aws_ecr_repository.client_webapp.repository_url
+}
