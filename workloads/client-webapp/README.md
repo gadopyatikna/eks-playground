@@ -10,4 +10,11 @@ terraform -chdir=workloads/client-webapp init
 terraform -chdir=workloads/client-webapp apply
 ```
 
-`eks_cluster_name` and `client_webapp_image` are required. Use an immutable ECR tag such as a Git SHA.
+`eks_cluster_name`, `client_webapp_image`, and `client_webapp_target_group_arn` are required. Get the first and third values from the platform root:
+
+```bash
+terraform -chdir=infra output -raw eks_cluster_name
+terraform -chdir=infra output -raw client_webapp_target_group_arn
+```
+
+The TargetGroupBinding registers the selected Pod IPs in the existing public ALB target group.

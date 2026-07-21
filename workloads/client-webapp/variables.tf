@@ -25,3 +25,8 @@ variable "client_webapp_port" {
   type        = number
   default     = 8080
 }
+
+variable "client_webapp_target_group_arn" {
+  description = "Existing ALB target group ARN to bind to the ClientWebApi Service."
+  type        = string
+}

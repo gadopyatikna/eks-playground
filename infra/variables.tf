@@ -51,12 +51,6 @@ variable "client_webapp_port" {
   default     = 8080
 }
 
-variable "db_port" {
-  description = "Private database port. Defaults to PostgreSQL."
-  type        = number
-  default     = 5432
-}
-
 variable "acm_certificate_arn" {
   description = "ACM certificate ARN for the public ALB HTTPS listener. The certificate must be in the deployment region."
   type        = string

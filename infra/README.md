@@ -3,8 +3,6 @@
 This is a Terraform starter for a typical client-facing AWS web application with:
 
 - Public entrypoint for a client-facing webapp
-- Internet-facing Lambda entrypoint pattern
-- Private database tier
 - Minimal Amazon EKS cluster with a managed node group
 
 ## EKS
@@ -36,7 +34,7 @@ kubectl get nodes
 
 The public ALB terminates TLS with the ACM certificate supplied in `acm_certificate_arn`. Its HTTP listener permanently redirects requests to HTTPS, and the HTTPS listener forwards HTTP traffic to the `client-webapp` target group on port `8080`.
 
-The target group is intentionally empty until an EKS workload is registered through an AWS Load Balancer Controller Ingress or TargetGroupBinding.
+Terraform installs the AWS Load Balancer Controller with an IAM role for service accounts (IRSA). The ClientWebApi workload uses a TargetGroupBinding to register its selected Pod IPs in this target group.
 
 ## Deploy ClientWebApi to EKS
 
@@ -98,15 +96,10 @@ Private app subnets:
   AZ A: 10.20.30.0/24
   AZ B: 10.20.31.0/24
 
-Private data subnets:
-  AZ A: 10.20.50.0/24
-  AZ B: 10.20.51.0/24
-
 Reserved for future:
   10.20.20.0/24   public expansion
   10.20.40.0/24   private app expansion
-  10.20.60.0/24   private data expansion
-  10.20.70.0/24+  shared services, endpoints, admin, observability
+  10.20.50.0/24+  data, shared services, endpoints, admin, observability
 ```
 
 ## Architecture
@@ -119,22 +112,13 @@ Public ALB / API Gateway
   |
   v
 Private app subnets
-  |        |
-  |        +-- Lambda ENIs, if Lambda needs VPC access
-  +----------- Client-facing webapp targets
   |
-  v
-Private data subnets
-  |
-  v
-RDS / private database
+  +-- EKS nodes and ClientWebApi Pods
 ```
 
 Recommended entrypoint mapping:
 
 - Client-facing webapp: internet-facing ALB in public subnets, app compute in private app subnets.
-- Internet-facing Lambda: API Gateway or Lambda Function URL as the public entrypoint. Put the Lambda in private app subnets only if it must reach the private DB or other VPC resources.
-- Private DB: RDS/Aurora in private data subnets with no public access.
 
 ## Routing Between Subnets
 
@@ -144,7 +128,7 @@ Subnets inside the same VPC already have a built-in route:
 10.20.0.0/16 -> local
 ```
 
-That route exists in every route table automatically. It is what lets the public ALB subnet talk to the private app subnet, and the private app subnet talk to the private DB subnet.
+That route exists in every route table automatically. It is what lets the public ALB subnet talk to the private app subnet.
 
 You do not add a route like this manually:
 
@@ -156,13 +140,13 @@ AWS handles intra-VPC routing through the `local` route. Security Groups decide 
 
 ## Cost Note
 
-NAT Gateways are not free. For a real client-facing webapp, NAT Gateways are common. For a cheap playground, set:
+NAT Gateways are not free. EKS nodes in private subnets need outbound access, so this configuration enables a NAT Gateway.
 
 ```hcl
-enable_nat_gateway = false
+enable_nat_gateway = true
 ```
 
-Then prefer VPC endpoints for AWS APIs, or keep Lambda outside the VPC unless it needs private resources.
+VPC endpoints for ECR, S3, and CloudWatch can reduce NAT data-processing charges.
 
 ## Usage
 
@@ -172,4 +156,4 @@ terraform -chdir=infra plan
 terraform -chdir=infra apply
 ```
 
-Copy `infra/terraform.tfvars.example` to `infra/terraform.tfvars` and adjust the region, environment name, and DB port.
+Copy `infra/terraform.tfvars.example` to `infra/terraform.tfvars` and adjust the region and environment name.

@@ -14,27 +14,14 @@ output "public_subnet_ids" {
 }
 
 output "private_app_subnet_ids" {
-  description = "Private app subnet IDs for app compute, internal services, and VPC-attached Lambda functions."
+  description = "Private app subnet IDs for EKS nodes and application workloads."
   value       = aws_subnet.private_app[*].id
-}
-
-output "private_db_subnet_ids" {
-  description = "Private database subnet IDs."
-  value       = aws_subnet.private_db[*].id
-}
-
-output "db_subnet_group_name" {
-  description = "DB subnet group name for RDS/Aurora."
-  value       = aws_db_subnet_group.private.name
 }
 
 output "security_group_ids" {
   description = "Security groups for each workload tier."
   value = {
     client_web_alb = aws_security_group.client_web_alb.id
-    client_webapp  = aws_security_group.client_webapp.id
-    lambda         = aws_security_group.lambda.id
-    database       = aws_security_group.database.id
   }
 }
 
@@ -62,4 +49,9 @@ output "client_webapp_url" {
 output "client_webapp_ecr_repository_url" {
   description = "ECR repository to which the ClientWebApi image must be pushed."
   value       = aws_ecr_repository.client_webapp.repository_url
+}
+
+output "client_webapp_target_group_arn" {
+  description = "ALB target group ARN to bind to the ClientWebApi Kubernetes Service."
+  value       = aws_lb_target_group.client_webapp.arn
 }

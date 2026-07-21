@@ -10,7 +10,6 @@ enable_nat_gateway = false
 single_nat_gateway = true
 
 client_webapp_port = 8080
-db_port            = 5432
 
 # ACM certificate in the same region as the ALB. HTTPS terminates at the ALB.
 # acm_certificate_arn = "arn:aws:acm:us-east-1:123456789012:certificate/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"

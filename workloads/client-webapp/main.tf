@@ -97,3 +97,22 @@ resource "kubernetes_service_v1" "client_webapp" {
     type = "ClusterIP"
   }
 }
+
+resource "kubernetes_manifest" "client_webapp_target_group_binding" {
+  manifest = {
+    apiVersion = "elbv2.k8s.aws/v1beta1"
+    kind       = "TargetGroupBinding"
+    metadata = {
+      name      = "client-webapp"
+      namespace = kubernetes_namespace_v1.apps.metadata[0].name
+    }
+    spec = {
+      targetGroupARN = var.client_webapp_target_group_arn
+      targetType     = "ip"
+      serviceRef = {
+        name = kubernetes_service_v1.client_webapp.metadata[0].name
+        port = var.client_webapp_port
+      }
+    }
+  }
+}
